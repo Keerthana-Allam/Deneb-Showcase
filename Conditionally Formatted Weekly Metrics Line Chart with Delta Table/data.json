@@ -1,0 +1,140 @@
+{
+  "$schema": "https://vega.github.io/schema/vega-lite/v5.json",
+  "data": { "name": "dataset" },
+
+
+  "params": [
+    {
+      "name": "parameter_selected",
+      "value": "Completed_Orders",
+      "bind": {
+        "input": "radio",
+        "options": [
+          "Completed_Orders",
+          "Active_Users",
+          "New_Signups",          
+          "Total_Orders",
+          "Total_Users"
+        ],
+        "name": "Metric"
+      }
+    }
+  ],
+ 
+
+  "vconcat": [
+    {
+      "height": 280,
+      "transform": [
+        {
+          "calculate": "isValid(datum[parameter_selected]) && isFinite(toNumber(datum[parameter_selected])) ? toNumber(datum[parameter_selected]) : null",
+          "as": "Value"
+        },
+        {
+          "window": [
+            { "op": "lag",  "field": "Value", "as": "PrevValue" },
+            { "op": "lead", "field": "Value", "as": "NextValue" },
+            { "op": "lead", "field": "Week Ending", "as": "NextWeek" }
+          ],
+          "sort": [{ "field": "Week Ending", "order": "ascending" }]
+        },
+        {
+          "calculate": "datum.NextValue == null ? null : datum.NextValue - datum.Value",
+          "as": "Slope"
+        },
+        {
+          "calculate": "datum.Slope == null ? null : (datum.Slope >= 0 ? 'Grey' : 'Red')",
+          "as": "SegmentColor"
+        },
+        {
+          "calculate": "datum.PrevValue != null && datum.NextValue != null && datum.Value > datum.PrevValue && datum.Value > datum.NextValue",
+          "as": "IsLocalMax"
+        }
+      ],
+      "layer": [
+
+
+
+       {
+    "transform": [{ "filter": "datum.NextValue != null" }],
+    "mark": { "type": "rule", "strokeWidth": 2 },
+    "encoding": {
+      "x": { "field": "Week Ending", "type": "temporal", "axis": { "title": "Week Ending", "format": "%d-%b-%y", "grid": true, "labelFont": "Segoe UI", "labelFontSize": 10 } },
+      "x2": { "field": "NextWeek", "type": "temporal" },
+      "y": { "field": "Value", "type": "quantitative", "scale": { "zero": false }, "axis": { "title": { "expr": "parameter_selected" }, "grid": true, "labelFont": "Segoe UI", "labelFontSize": 10 } },
+      "y2": { "field": "NextValue", "type": "quantitative" },
+      "color": { "field": "SegmentColor", "type": "nominal", "scale": { "domain": ["Grey","Red"], "range": ["#9E9E9E","#FF0000"] }, "legend": null }
+    }
+  },
+
+       {
+    "mark": { "type": "point", "filled": true, "size": 60, "color": "#616161" },
+    "encoding": { "x": { "field": "Week Ending", "type": "temporal" }, "y": { "field": "Value", "type": "quantitative" } }
+  },
+      {
+    "transform": [{ "filter": "datum.IsLocalMax" }],
+    "mark": { "type": "point", "filled": true, "size": 90, "color": "#FF0000" },
+    "encoding": { "x": { "field": "Week Ending", "type": "temporal" }, "y": { "field": "Value", "type": "quantitative" } }
+  }
+]
+    },
+
+    
+{
+  "height": 80,
+  "width": { "step": 90 },
+  "layer": [
+    {
+      "data": { "values": [{"row":0,"label":"Value"},{"row":1,"label":"Δ from Prev Week"}] },
+      "mark": { "type": "text", "align": "left", "baseline": "middle", "x": -75, "font": "Segoe UI", "fontSize": 10, "fontWeight": "bold" },
+      "encoding": {
+        "y": {
+          "field": "row",
+          "type": "ordinal",
+          "axis": null,
+          "scale": { "domain": [0, 1], "range": [10, 43] }  
+        },
+        "text": { "field": "label", "type": "nominal" }
+      }
+    },
+
+
+    {
+      "data": { "name": "dataset" },
+      "transform": [
+        { "calculate": "toNumber(datum[parameter_selected])", "as": "Value" }
+      ],
+      "mark": { "type": "text", "align": "center", "baseline": "middle", "font": "Segoe UI", "fontSize": 10 },
+      "encoding": {
+        "x": { "timeUnit": "yearmonthdate", "field": "Week Ending", "type": "ordinal", "axis": { "labelAngle": 0, "format": "%d-%b-%y","labelFont": "Segoe UI", "labelFontSize": 10 } },
+        "y": { "value": 15 },
+        "text": { "field": "Value", "type": "quantitative" , "format": ".2f"},
+        "color": { "value": "#000000" }
+      }
+    },
+
+
+    {
+      "data": { "name": "dataset" },
+      "transform": [
+        { "calculate": "toNumber(datum[parameter_selected])", "as": "Value" },
+        { "window": [{ "op": "lag", "field": "Value", "as": "PrevValue" }], "sort": [{ "field": "Week Ending", "order": "ascending" }] },
+        { "calculate": "datum.PrevValue == null ? null : datum.Value - datum.PrevValue", "as": "Delta" }
+      ],
+      "mark": { "type": "text", "align": "center", "baseline": "middle", "font": "Segoe UI", "fontSize": 10 },
+      "encoding": {
+        "x": { "timeUnit": "yearmonthdate", "field": "Week Ending", "type": "ordinal" ,
+        "axis": { "title": null } 
+        },
+        "y": { "value": 35 },
+        "text": { "field": "Delta", "type": "quantitative", "format": ".2f" },
+        "color": { "condition": { "test": "datum.Delta < 0", "value": "#D32F2F" }, "value": "#000000" }
+      }
+    }
+  ]
+}
+
+
+  ],
+  "resolve": { "scale": { "x": "shared", "y": "shared" } }
+}
