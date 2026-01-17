@@ -1,6 +1,0 @@
-This chart visualizes Power BI measures like completed orders, active users, and signups. It combines a line chart with points showing trends, along with a bottom table displaying values and week-over-week changes (Δ). Negative changes are highlighted in red, making dips easy to spot.
-
-Special features:
-- Interactive metric selector (based on Power BI measures)
-- Conditional formatting for negative changes
-- Shared x-axis with clean, aligned table for quick reference
