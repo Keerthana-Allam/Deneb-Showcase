@@ -1,1 +1,135 @@
+{
+  "$schema": "https://vega.github.io/schema/vega-lite/v5.json",
+  "data": { "name": "dataset" },
 
+  "transform": [
+    { "filter": "datum['WF Amount'] != null" },
+
+    { "calculate": "datum['Total?'] == true ? 1 : 0", "as": "isTotal" },
+    { "calculate": "datum['WF Amount']", "as": "amt" },
+    { "calculate": "datum.isTotal == 1 ? 0 : datum.amt", "as": "delta" },
+
+    {
+      "window": [
+        { "op": "sum", "field": "isTotal", "as": "segment" }
+      ],
+      "sort": [{ "field": "Sort", "order": "ascending" }]
+    },
+
+    { "calculate": "datum.isTotal == 1 ? datum.amt : 0", "as": "amtTotalOnly" },
+
+    {
+      "window": [
+        { "op": "first_value", "field": "amtTotalOnly", "as": "baseTotal" }
+      ],
+      "groupby": ["segment"],
+      "sort": [{ "field": "Sort", "order": "ascending" }]
+    },
+
+    {
+      "window": [
+        { "op": "sum", "field": "delta", "as": "runDelta" }
+      ],
+      "groupby": ["segment"],
+      "sort": [{ "field": "Sort", "order": "ascending" }]
+    },
+
+    { "calculate": "datum.baseTotal + (datum.runDelta - datum.delta)", "as": "start" },
+    { "calculate": "datum.baseTotal + datum.runDelta", "as": "endDelta" },
+
+    { "calculate": "datum.isTotal == 1 ? 0 : datum.start", "as": "barStart" },
+    { "calculate": "datum.isTotal == 1 ? datum.amt : datum.endDelta", "as": "barEnd" },
+
+    { "calculate": "datum.barEnd - datum.barStart", "as": "barChange" },
+
+    { "calculate": "datum.isTotal == 1 ? datum.barEnd : datum.barStart", "as": "connTo" },
+
+    {
+      "window": [
+        { "op": "lead", "field": "Step", "as": "nextStep" },
+        { "op": "lead", "field": "connTo", "as": "nextConnTo" }
+      ],
+      "sort": [{ "field": "Sort", "order": "ascending" }]
+    }
+  ],
+
+  "encoding": {
+    "x": {
+      "field": "Step",
+      "type": "ordinal",
+      "sort": { "field": "Sort", "order": "ascending" },
+      "axis": { "title": "", "labelAngle": 0 }
+    },
+    "y": {
+      "type": "quantitative",
+      "scale": { "zero": true },
+      "axis": {
+        "title": "",
+        "grid": true,
+        "labelExpr": "replace(replace(format(datum.value, '$.1~s'), 'G', 'B'), 'k', 'K')"
+      }
+    }
+  },
+
+  "layer": [
+    {
+      "mark": { "type": "bar", "cornerRadiusTopLeft": 2, "cornerRadiusTopRight": 2 },
+      "encoding": {
+        "y": { "field": "barEnd", "type": "quantitative" },
+        "y2": { "field": "barStart", "type": "quantitative" },
+
+        "color": {
+          "condition": [
+            { "test": "datum.isTotal == 1", "value": "#4472C4" },
+            { "test": "datum.barChange >= 0", "value": "#00B050" }
+          ],
+          "value": "#C00000"
+        },
+
+        "tooltip": [
+          { "field": "Step", "type": "nominal" },
+          { "field": "amt", "type": "quantitative", "title": "Value", "format": ",.0f" }
+        ]
+      }
+    },
+
+    {
+      "transform": [
+        { "calculate": "datum.isTotal == 1 ? datum.amt : datum.delta", "as": "labelValue" },
+
+        { "calculate": "datum.barEnd >= datum.barStart ? datum.barEnd : datum.barStart", "as": "labelY" },
+
+        { "calculate": "replace(replace(format(datum.labelValue, '+$,.3~s'), 'G', 'B'), 'k', 'K')", "as": "labelText" },
+
+        { "filter": "datum.labelValue != 0" }
+      ],
+
+      "mark": {
+        "type": "text",
+        "fontSize": 12,
+        "fontWeight": "bold",
+        "align": "center",
+        "baseline": "bottom",
+        "dy": -4
+      },
+
+      "encoding": {
+        "x": {
+          "field": "Step",
+          "type": "ordinal",
+          "sort": { "field": "Sort", "order": "ascending" }
+        },
+        "y": { "field": "labelY", "type": "quantitative" },
+        "text": { "field": "labelText", "type": "nominal" },
+
+        "color": {
+          "condition": [
+            { "test": "datum.isTotal == 1", "value": "#4472C4" },
+            { "test": "datum.barChange >= 0", "value": "#00B050" }
+          ],
+          "value": "#C00000"
+        }
+      }
+    }
+  ]
+}
